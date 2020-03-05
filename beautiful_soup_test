@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jun  6 21:03:44 2019
+
+@author: andreas
+"""
+
+from bs4 import BeautifulSoup
+import pandas as pd
+import numpy as np
+import requests
+import re
+import lxml
+
+
+#must find a way to include the information about the brew, and not only the ingredients table.
+
+def find_info(url):
+    """
+    Parameters
+    ----------
+    url : Gets the url of the recipe as a string.
+
+    Returns
+    -------
+    Returns the info box of the recipe as text.
+
+    """
+    table_data = requests.get(url)
+    info_soup = BeautifulSoup(table_data.content, "lxml")
+
+    table = info_soup.find("table", class_="r_hdr")
+    info = table.find_all("td")
+
+    info_string = ""
+    for i in info:
+        info_string += "\n" + i.text
+    return info_string
+
+def find_table(url):
+    """
+
+    :param table_type: String specifying what table to parse for, eg 'r_hdr'
+    :param soup: BeuatiulSoup object containing URL source code
+    :return:
+    """
+    table_data = requests.get(url)
+    table_soup = BeautifulSoup(table_data.content, "lxml")
+    rows = table_soup.find_all("tr", class_="alt")
+    
+
+    header_list =["Amount", "Name", "Type", "#"]
+    table_entry_list = []
+    
+    
+    for item in rows:
+        table_entry_list.append([tab_entry.text for tab_entry in item.find_all("td") if tab_entry != []])
+
+    table_entry_list = [x for x in table_entry_list if x != []]
+    
+
+    recipe_df = pd.DataFrame(table_entry_list)
+    
+    recipe_df.columns = header_list
+    
+    return recipe_df
+
+
+
+beersmith_recipe_list_url = "https://beersmithrecipes.com/toprated"
+recipe_list_data = requests.get(beersmith_recipe_list_url)
+soup_main_list = BeautifulSoup(recipe_list_data.content, 'html.parser')
+results_main = soup_main_list.find_all("a", attrs={"title": "View Recipe"}, href=True)
+
+recipe_dict = {}
+desc_dict = {}
+# The recipe dict is to be filled with keys containing the Title (and, if possible, subtitle) 
+# of the recipes on the website. The values will be the dataframe of the recipe.
+
+for i in results_main:
+    recipe_title = i.string
+    recipe_url = i.get("href")
+    recipe_dict[recipe_title] = find_table(recipe_url)
+    desc_dict[recipe_title] = find_info(recipe_url)
+
+
+counter = 1
+
+while counter <= 10:
+    beersmith_recipe_list_url = "https://beersmithrecipes.com/toprated/" +str(counter)
+    recipe_list_data = requests.get(beersmith_recipe_list_url)
+    soup_main_list = BeautifulSoup(recipe_list_data.content, 'html.parser')
+    results_main = soup_main_list.find_all("a", attrs={"title": "View Recipe"}, href=True)
+
+    recipe_dict = {}
+    desc_dict = {}
+# The recipe dict is to be filled with keys containing the Title (and, if possible, subtitle) 
+# of the recipes on the website. The values will be the dataframe of the recipe.
+
+for i in results_main:
+    recipe_title = i.string
+    recipe_url = i.get("href")
+    recipe_dict[recipe_title] = find_table(recipe_url)
+    desc_dict[recipe_title] = find_info(recipe_url)
+# print(recipe_dict)
+
+
+#TEST AV VAL
+
+counter = 1
+for key in recipe_dict.keys():
+        
+    print(key)
+
+val = input("Vilken öl vill du brygga?")
+
+print(desc_dict[val])
+print(recipe_dict[val])
+
+
+
+# def convert_units(df, series_name, units):
+#     '''
+
+#     :param df:  DataFrame object containing a series with strings containing units to be converted
+#     :param series_name: Name of the series in dataframe where information is found
+#     :param units:   Dictionary object containing unit and standard conversion. Unit must be non-empty string
+#     :return:    DataFrame with all amounts converted to standard unit as specifies by conversion constant
+#     '''
+#     '''
+#     lb_conv = 0.453592
+#     lb_indicator = 'lbs'
+#     oz_conv = 0.0283495
+#     oz_indicator = 'oz'
+#     pounds = build_amount_list(df[series_name], lb_indicator)
+#     ounces = build_amount_list(df[series_name], oz_indicator)
+#     '''
+#     converted_amounts = pd.DataFrame(np.zeros(df[series_name].shape))
+#     for unit in units:
+#         conv = unit['conv']
+#         indicator = unit['indicator']
+#         unit_list = build_amount_list(df[series_name], indicator)
+#         converted_amounts = converted_amounts + conv * pd.DataFrame(unit_list)
+
+#     # Unit convert to kilograms and add together
+#     # converted_amounts = lb_conv * pd.DataFrame(pounds) + oz_conv * pd.DataFrame(ounces)
+#     return converted_amounts
+
+
+# def build_amount_list(series, unit_ind):
+#     unit_list = []
+#     for string in series:
+#         unit = re.findall('([\d.]+)\s+(' + unit_ind + ')', string)
+#         if unit:
+#             unit_list.append(float(unit[0][0]))
+#         else:
+#             unit_list.append(0)
+#     return unit_list
+
+
+# url = "https://beersmithrecipes.com/viewrecipe/653/dr-smurtos-golden-ale"
+
+# data = requests.get(url)
+
+# soup = BeautifulSoup(data.text, "html.parser")
+
+# df = find_table("recipes", soup)
+# lb_conv = {
+#     'indicator': 'lbs',
+#     'conv': 0.453592
+# }
+# oz_conv = {
+#     'indicator': 'oz',
+#     'conv': 0.0283495
+# }
+# pack_conv = {
+#     'indicator': 'pkgs',
+#     'conv': 1
+# }
+
+# conv_list = [lb_conv, oz_conv, pack_conv]
+# df['std_amount'] = convert_units(df, 'Amount', conv_list)
+
+
