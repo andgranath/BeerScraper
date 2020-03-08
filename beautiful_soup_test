@@ -93,22 +93,21 @@ while counter <= 10:
     soup_main_list = BeautifulSoup(recipe_list_data.content, 'html.parser')
     results_main = soup_main_list.find_all("a", attrs={"title": "View Recipe"}, href=True)
 
-    recipe_dict = {}
-    desc_dict = {}
+
 # The recipe dict is to be filled with keys containing the Title (and, if possible, subtitle) 
 # of the recipes on the website. The values will be the dataframe of the recipe.
 
-for i in results_main:
-    recipe_title = i.string
-    recipe_url = i.get("href")
-    recipe_dict[recipe_title] = find_table(recipe_url)
-    desc_dict[recipe_title] = find_info(recipe_url)
-# print(recipe_dict)
+    for i in results_main:
+        recipe_title = i.string
+        recipe_url = i.get("href")
+        recipe_dict[recipe_title] = find_table(recipe_url)
+        desc_dict[recipe_title] = find_info(recipe_url)
+    counter += 1
+
 
 
 #TEST AV VAL
 
-counter = 1
 for key in recipe_dict.keys():
         
     print(key)
